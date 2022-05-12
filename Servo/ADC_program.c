@@ -1,0 +1,205 @@
+/*
+ * ADC_program.c
+
+ *
+ *  Created on: Aug 19, 2021
+ *      Author: Radwa
+ */
+
+#include "../LIB/STD_TYPES.h"
+#include "../LIB/BIT_MATH.h"
+
+#include"DIO_interface.h"
+#include"DIO_reg.h"
+
+#include "ADC_config.h"
+#include "ADC_interface.h"
+#include "ADC_reg.h"
+
+
+
+void ADC_voidADCINTEnable(void)
+{
+	SET_BIT(ADCSRA,ADCSRA_ADIE);
+}
+void ADC_voidADCINTDisable(void)
+{
+	CLR_BIT(ADCSRA,ADCSRA_ADIE);
+}
+void ADC_voidRightAdj(void)
+{
+	CLR_BIT(ADMUX,ADMUX_ADLAR);
+}
+void ADC_voidLefttAdj(void)
+{
+	SET_BIT(ADMUX,ADMUX_ADLAR);
+
+}
+
+
+void ADC_voidStartConversionByPolling(void)
+{
+	/*Disable INT*/
+	ADC_voidADCINTDisable();
+	/*Free running*/
+	SET_BIT(ADCSRA,ADCSRA_ADSC);
+	while (GET_BIT(ADCSRA,ADCSRA_ADIF)==0);
+	/*Clear Flag*/
+	SET_BIT(ADCSRA,ADCSRA_ADIF);
+}
+
+u8 ADC_voidADCInit(void)
+{
+	u8 Local_u8Return=OK;
+	/*Enable ADC*/
+	SET_BIT(ADCSRA,ADCSRA_ADEN);
+	/*Enable INT*/
+	SET_BIT(ADCSRA,ADCSRA_ADIE);
+	/*ADC PORT as INPUT*/
+	DIO_voidSetPortDirection(ADC_PORT,DIO_u8INPUT);
+	/*Choose clock*/
+#if ADC_PRESCALER==DIVFACT_2
+		CLR_BIT(ADCSRA,ADCSRA_ADPS2);
+		CLR_BIT(ADCSRA,ADCSRA_ADPS1);
+		CLR_BIT(ADCSRA,ADCSRA_ADPS0);
+#elif ADC_PRESCALER==DIVFACT_2_1
+		CLR_BIT(ADCSRA,ADCSRA_ADPS2);
+		CLR_BIT(ADCSRA,ADCSRA_ADPS1);
+		SET_BIT(ADCSRA,ADCSRA_ADPS0);
+#elif ADC_PRESCALER==DIVFACT_4
+		CLR_BIT(ADCSRA,ADCSRA_ADPS2);
+		SET_BIT(ADCSRA,ADCSRA_ADPS1);
+		CLR_BIT(ADCSRA,ADCSRA_ADPS0);
+#elif ADC_PRESCALER==DIVFACT_8
+		CLR_BIT(ADCSRA,ADCSRA_ADPS2);
+		SET_BIT(ADCSRA,ADCSRA_ADPS1);
+		SET_BIT(ADCSRA,ADCSRA_ADPS0);
+#elif ADC_PRESCALER==DIVFACT_16
+		SET_BIT(ADCSRA,ADCSRA_ADPS2);
+		CLR_BIT(ADCSRA,ADCSRA_ADPS1);
+		CLR_BIT(ADCSRA,ADCSRA_ADPS0);
+#elif ADC_PRESCALER==DIVFACT_32
+		SET_BIT(ADCSRA,ADCSRA_ADPS2);
+		CLR_BIT(ADCSRA,ADCSRA_ADPS1);
+		SET_BIT(ADCSRA,ADCSRA_ADPS0);
+#elif ADC_PRESCALER==DIVFACT_64
+		SET_BIT(ADCSRA,ADCSRA_ADPS2);
+		SET_BIT(ADCSRA,ADCSRA_ADPS1);
+		CLR_BIT(ADCSRA,ADCSRA_ADPS0);
+#elif ADC_PRESCALER==DIVFACT_128
+		SET_BIT(ADCSRA,ADCSRA_ADPS2);
+		SET_BIT(ADCSRA,ADCSRA_ADPS1);
+		SET_BIT(ADCSRA,ADCSRA_ADPS0);
+#else
+		Local_u8Return=NOK;
+#endif
+
+#if ADC_AREF==AREF_EXTSUPPLY
+		CLR_BIT(ADMUX,ADMUX_REFS0);
+		CLR_BIT(ADMUX,ADMUX_REFS1);
+#elif ADC_AREF==AREF_AVCCANDCAP
+		SET_BIT(ADMUX,ADMUX_REFS0);
+		CLR_BIT(ADMUX,ADMUX_REFS1);
+#elif ADC_AREF==AREF_INTSUPPLY
+		SET_BIT(ADMUX,ADMUX_REFS0);
+		SET_BIT(ADMUX,ADMUX_REFS1);
+#else
+			Local_u8Return=NOK;
+#endif
+
+	return Local_u8Return;
+
+}
+
+u8 ADC_u8ReadChannelSingleEnded(u8 Copy_u8ChannelNum,u16* ptr)
+{
+	u8 Local_u8Return=OK;
+	/*Select Channel*/
+	CLR_BIT(ADMUX,ADMUX_MUX4);
+	CLR_BIT(ADMUX,ADMUX_MUX3);
+	switch (Copy_u8ChannelNum)
+	{
+	case ADC_CH1:
+		CLR_BIT(ADMUX,ADMUX_MUX2);
+		CLR_BIT(ADMUX,ADMUX_MUX1);
+		CLR_BIT(ADMUX,ADMUX_MUX0);
+		break;
+	case ADC_CH2:
+		CLR_BIT(ADMUX,ADMUX_MUX2);
+		CLR_BIT(ADMUX,ADMUX_MUX1);
+		SET_BIT(ADMUX,ADMUX_MUX0);
+		break;
+	case ADC_CH3:
+		CLR_BIT(ADMUX,ADMUX_MUX2);
+		SET_BIT(ADMUX,ADMUX_MUX1);
+		CLR_BIT(ADMUX,ADMUX_MUX0);
+		break;
+	case ADC_CH4:
+		CLR_BIT(ADMUX,ADMUX_MUX2);
+		SET_BIT(ADMUX,ADMUX_MUX1);
+		SET_BIT(ADMUX,ADMUX_MUX0);
+		break;
+	case ADC_CH5:
+		SET_BIT(ADMUX,ADMUX_MUX2);
+		CLR_BIT(ADMUX,ADMUX_MUX1);
+		CLR_BIT(ADMUX,ADMUX_MUX0);
+		break;
+	case ADC_CH6:
+		SET_BIT(ADMUX,ADMUX_MUX2);
+		CLR_BIT(ADMUX,ADMUX_MUX1);
+		SET_BIT(ADMUX,ADMUX_MUX0);
+		break;
+	case ADC_CH7:
+		SET_BIT(ADMUX,ADMUX_MUX2);
+		SET_BIT(ADMUX,ADMUX_MUX1);
+		CLR_BIT(ADMUX,ADMUX_MUX0);
+		break;
+	case ADC_CH8:
+		SET_BIT(ADMUX,ADMUX_MUX2);
+		SET_BIT(ADMUX,ADMUX_MUX1);
+		SET_BIT(ADMUX,ADMUX_MUX0);
+		break;
+	default :
+		Local_u8Return=NOK;
+		break;
+	}
+	/*Start conversion*/
+	ADC_voidStartConversionByPolling();
+	/*Choose 8Bit or 10Bit*/
+#if ADC_RESOLUTION==ADC_RES_8BIT
+	if (ADC_ADJUST==ADC_ADJLEFT)
+	{
+		ADC_voidLefttAdj();
+		*ptr = (u16)ADCH;
+	}
+	else if (ADC_ADJUST==ADC_ADJRIGHT)
+	{
+		ADC_voidRightAdj();
+		*ptr = ADC_VAL >>2;
+	}
+	else
+	{
+		Local_u8Return=NOK;
+	}
+
+#elif ADC_RESOLUTION==ADC_RES_10BIT
+		if (ADC_ADJUST==ADC_ADJLEFT)
+		{
+			ADC_voidLefttAdj();
+			*ptr = (u16) (ADC_VAL>>6)  ;
+		}
+		else if (ADC_ADJUST==ADC_ADJRIGHT)
+		{
+			ADC_voidRightAdj();
+			*ptr = ADC_VAL;
+		}
+		else
+		{
+			Local_u8Return=NOK;
+		}
+#else
+	Local_u8Return=NOK;
+#endif
+	return Local_u8Return;
+
+}
